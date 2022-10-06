@@ -2,6 +2,7 @@
 A simple image editor created for the University. It can do basic functionality like alpha blend, chroma keying, jpg and filters.
 
 The editor when is opened appear like this:
+
 ![image](https://user-images.githubusercontent.com/31776951/194406957-8fb4ced4-178a-4047-96ab-27b1d06c6d6c.png)
 
 ## Menu
