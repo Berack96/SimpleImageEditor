@@ -2,7 +2,6 @@ package berack96.multimedia.view;
 
 import javax.imageio.ImageIO;
 import javax.swing.ImageIcon;
-import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JMenu;
@@ -11,7 +10,6 @@ import javax.swing.JMenuItem;
 import javax.swing.JPopupMenu;
 import javax.swing.JScrollPane;
 import javax.swing.SwingUtilities;
-import javax.swing.filechooser.FileNameExtensionFilter;
 
 import berack96.multimedia.ImagesUtil;
 import berack96.multimedia.composting.AlphaBlend;
@@ -24,6 +22,7 @@ import berack96.multimedia.resize.Bicubic;
 import berack96.multimedia.resize.Bilinear;
 import berack96.multimedia.resize.NearestNeighbor;
 
+import java.awt.FileDialog;
 import java.awt.Toolkit;
 import java.awt.image.BufferedImage;
 import java.io.File;
@@ -31,26 +30,27 @@ import java.io.IOException;
 import java.util.function.Supplier;
 
 public class Main {
-    final static String PATH = "src/resources/sample/";
+    private static JFrame imageFrame = null;
 
     public static void main(String[] args) throws Exception {
         ImagesUtil.maxThreads = 4;
-        runEditor();
+        imageFrame = runEditor();
+        imageFrame.setVisible(true);
     }
 
     static private JFrame runEditor() {
         var imageFrame = new JFrame("Simple Image Editor") { public BufferedImage image; public JLabel label;};
-        
+
         // All the menu options
         var utility = new JMenu("File");
-        utility.add(menuItem("Save", () -> showChooser(false, imageFrame.image)));
-        utility.add(menuItem("Load", () -> showChooser(true, imageFrame.image)));
-        
+        utility.add(menuItem("Save", () -> showDialog(false, imageFrame.image)));
+        utility.add(menuItem("Load", () -> showDialog(true, imageFrame.image)));
+
         var compose = new JMenu("Compose");
-        compose.add(menuItem("Alpha Blend", () -> new AlphaBlend(0.2, 0.8).transform(imageFrame.image, showChooser(true, imageFrame.image, true))));
-        compose.add(menuItem("Chroma Keying", () -> new ChromaKeying(true).transform(imageFrame.image, showChooser(true, imageFrame.image, true))));
-        compose.add(menuItem("Chroma Keying 3D", () -> new ChromaKeying3D(180, 120, 0, 255, 0).transform(imageFrame.image, showChooser(true, imageFrame.image, true))));
-        
+        compose.add(menuItem("Alpha Blend", () -> new AlphaBlend(0.2, 0.8).transform(imageFrame.image, showDialog(true, imageFrame.image, true))));
+        compose.add(menuItem("Chroma Keying", () -> new ChromaKeying(true).transform(imageFrame.image, showDialog(true, imageFrame.image, true))));
+        compose.add(menuItem("Chroma Keying 3D", () -> new ChromaKeying3D(180, 120, 0, 255, 0).transform(imageFrame.image, showDialog(true, imageFrame.image, true))));
+
         var compress = new JMenu("Compression");
         compress.add(menuItem("JPEG", () -> new JPEG().process(imageFrame.image, 1)));
 
@@ -88,27 +88,28 @@ public class Main {
         imageFrame.setSize(dim.width / 2, dim.height / 2);
         imageFrame.setLocationRelativeTo(null);
         imageFrame.setResizable(true);
-        imageFrame.setVisible(true);
-        
+
         return imageFrame;
     }
 
-    static private BufferedImage showChooser(boolean open, BufferedImage image) {
-        return showChooser(open, image, false);
+    static private BufferedImage showDialog(boolean open, BufferedImage image) {
+        return showDialog(open, image, false);
     }
-    static private BufferedImage showChooser(boolean open, BufferedImage image, boolean sameSize) {
-        var chooser = new JFileChooser();
-        chooser.setCurrentDirectory(new File("."));
-        chooser.setFileFilter(new FileNameExtensionFilter("PNG, JPEG", "png", "jpg", "jpeg"));
-        try {
-            if(open && chooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
-                var temp = ImageIO.read(chooser.getSelectedFile());
+
+    static private BufferedImage showDialog(boolean open, BufferedImage image, boolean sameSize) {
+        var dialog = new FileDialog(imageFrame, "Select image");
+        dialog.setFile("*.jpg;*.jpeg;*.png");
+        dialog.setMode(open? FileDialog.LOAD:FileDialog.SAVE);
+        dialog.setVisible(true);
+        if(dialog.getFile() != null) try {
+            var file = new File(dialog.getDirectory() + dialog.getFile());
+            if(open) {
+                var temp = ImageIO.read(file);
                 if(sameSize && image != null && temp != null && (image.getWidth() != temp.getWidth() || image.getHeight() != temp.getHeight()))
                     temp = new Bicubic(1).setRatio((double) image.getWidth() / temp.getWidth(), (double) image.getHeight() / temp.getHeight()).transform(temp);
                 image = temp;
             }
-            if(!open && chooser.showSaveDialog(null) == JFileChooser.APPROVE_OPTION) {
-                var file = chooser.getSelectedFile();
+            else {
                 ImageIO.write(image, "png", file);
                 if(!file.getName().endsWith(".png"))
                     file.renameTo(new File(file.getPath() + ".png"));
@@ -128,10 +129,10 @@ public class Main {
 
                 var popup = (JPopupMenu) item.getParent();
                 var frame = (JFrame) SwingUtilities.getRoot(popup.getInvoker());
-                
+
                 var fieldIco = frame.getClass().getField("label");
                 ((JLabel) fieldIco.get(frame)).setIcon(new ImageIcon(image));
-                
+
                 var fieldImg = frame.getClass().getField("image");
                 fieldImg.set(frame, image);
 
